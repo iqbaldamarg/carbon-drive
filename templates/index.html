@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 col-sm-8">
+
+    <div class="text-center mb-4">
+      <div style="font-size: 3rem;">🌱</div>
+      <h2 class="fw-bold mb-1">CarbonDrive</h2>
+      <p class="text-muted">Sistem Pelacak Emisi Karbon Kendaraan</p>
+    </div>
+
+    <div class="card p-4">
+      <form method="POST" action="/login">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Nama Pengguna / Perusahaan</label>
+          <input type="text" name="username" class="form-control"
+                 placeholder="Masukkan nama..." required autofocus>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Tipe Akun</label>
+          <div class="d-grid gap-2">
+
+            <label class="card p-3 d-flex flex-row align-items-center gap-3 cursor-pointer"
+                   style="cursor:pointer; box-shadow:none; border: 2px solid #dee2e6 !important;">
+              <input class="form-check-input mt-0 flex-shrink-0"
+                     type="radio" name="account_type" value="1" id="r-pribadi" checked
+                     style="width:1.2em; height:1.2em;">
+              <div>
+                <div class="fw-semibold">🧍 Pribadi</div>
+                <small class="text-muted">Untuk individu / pengguna perorangan</small>
+              </div>
+            </label>
+
+            <label class="card p-3 d-flex flex-row align-items-center gap-3"
+                   style="cursor:pointer; box-shadow:none; border: 2px solid #dee2e6 !important;">
+              <input class="form-check-input mt-0 flex-shrink-0"
+                     type="radio" name="account_type" value="2" id="r-corporate"
+                     style="width:1.2em; height:1.2em;">
+              <div>
+                <div class="fw-semibold">🏢 Perusahaan / Mitra</div>
+                <small class="text-muted">Untuk manajemen armada & fleet</small>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-success w-100 py-2 fw-semibold">
+          Masuk →
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-muted small mt-3">
+      Data disimpan secara lokal per pengguna.
+    </p>
+
+  </div>
+</div>
+
+{% endblock %}
