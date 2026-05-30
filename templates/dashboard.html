@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# ─── Hitung total KM semua kendaraan ─── #}
+{% set ns = namespace(total_km=0, ada_km=false) %}
+{% for item in entri_data %}
+  {% set ns.total_km = ns.total_km + item.entri.total_km %}
+  {% if item.entri.total_km > 0 %}{% set ns.ada_km = true %}{% endif %}
+{% endfor %}
+
+{# ─── Header halaman ─── #}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0">
+      {% if user.account_type == "Pribadi" %}🧍{% else %}🏢{% endif %}
+      {{ user.username }}
+    </h4>
+    <small class="text-muted">
+      Akun {{ user.account_type }} &nbsp;·&nbsp; <span id="tglHariIni">—</span>
+    </small>
+  </div>
+  <button class="btn btn-success px-4"
+          data-bs-toggle="modal" data-bs-target="#modalTambahKendaraan">
+    + Tambah Kendaraan
+  </button>
+</div>
+
+{# ─── Stat Cards ─── #}
+<div class="row g-3 mb-4">
+
+  <div class="col-sm-4">
+    <div class="card p-3 h-100 stat-card">
+      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
+        Emisi Minggu Ini
+      </div>
+      <div class="fs-3 fw-bold text-success lh-1 mb-1">
+        {{ "%.4f" | format(emisi_mingguan) }}
+      </div>
+      <div class="text-muted small">kg CO₂
+        {% if user.account_type != "Pribadi" %}
+        <span class="ms-1 opacity-75">/ driver</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-4">
+    <div class="card p-3 h-100 stat-card" style="border-left-color:#e07b39;">
+      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
+        Proyeksi Tahunan
+      </div>
+      <div class="fs-3 fw-bold lh-1 mb-1" style="color:#e07b39;">
+        {{ "%.2f" | format(proyeksi) }}
+      </div>
+      <div class="text-muted small">kg CO₂ / tahun</div>
+    </div>
+  </div>
+
+  <div class="col-sm-4">
+    <div class="card p-3 h-100 stat-card" style="border-left-color:#5b5ea6;">
+      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
+        Kendaraan Terdaftar
+      </div>
+      <div class="fs-3 fw-bold lh-1 mb-1" style="color:#5b5ea6;">
+        {{ entri_data | length }}
+      </div>
+      <div class="text-muted small">
+        {% if entri_data | length == 1 %}unit{% else %}unit{% endif %}
+        · {{ "%.1f" | format(ns.total_km) }} km total
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ─── Konten Utama (2 kolom) ─── #}
+<div class="row g-3">
+
+  {# ════ KIRI: Tabel Kendaraan ════ #}
+  <div class="col-lg-8 d-flex flex-column gap-3">
+
+    {# Tabel #}
+    <div class="card">
+      <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Daftar Kendaraan</span>
+        {% if entri_data %}
+        <span class="badge rounded-pill text-bg-secondary">{{ entri_data | length }}</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body p-0">
+
+        {# ── Empty state ── #}
+        {% if not entri_data %}
+        <div class="text-center py-5">
+          <div style="font-size:2.8rem;">🚗</div>
+          <p class="text-muted mt-2 mb-3">Belum ada kendaraan terdaftar.</p>
+          <button class="btn btn-success btn-sm px-4"
+                  data-bs-toggle="modal" data-bs-target="#modalTambahKendaraan">
+            + Tambah Kendaraan Pertama
+          </button>
+        </div>
+
+        {# ── Tabel berisi data ── #}
+        {% else %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Kendaraan</th>
+                <th class="text-end">KM / Minggu</th>
+                <th class="text-end d-none d-md-table-cell">Emisi (kg CO₂)</th>
+                <th class="text-center">Status</th>
+                <th class="pe-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for item in entri_data %}
+            <tr>
+              {# Nama & info #}
+              <td class="ps-3">
+                <div class="fw-semibold small">{{ item.entri.kendaraan.nama }}</div>
+                <div class="text-muted" style="font-size:.75rem;">
+                  {{ item.entri.kendaraan.faktor_emisi }} kg CO₂/km
+                  {% if user.account_type != "Pribadi" %}
+                  &nbsp;·&nbsp; {{ item.entri.jumlah_unit }} unit / {{ item.entri.jumlah_driver }} driver
+                  {% endif %}
+                </div>
+              </td>
+
+              {# KM #}
+              <td class="text-end">
+                <div class="fw-semibold">{{ "%.1f" | format(item.entri.total_km) }}</div>
+                {% if user.account_type != "Pribadi" and item.status %}
+                <div class="text-muted" style="font-size:.73rem;">
+                  {{ "%.1f" | format(item.status.km_efektif) }}/driver
+                </div>
+                {% endif %}
+              </td>
+
+              {# Emisi — hidden on small screens #}
+              <td class="text-end d-none d-md-table-cell">
+                <div class="fw-semibold">{{ "%.4f" | format(item.entri.emisi_total()) }}</div>
+              </td>
+
+              {# Status badge #}
+              <td class="text-center">
+                {% if item.status %}
+                  {% set s = item.status.status %}
+                  {% if s == "AMAN" %}
+                  <span class="badge badge-aman">✅ AMAN</span>
+                  {% elif s == "PERHATIAN" %}
+                  <span class="badge badge-perhatian">⚠️ PERHATIAN</span>
+                  {% else %}
+                  <span class="badge badge-kritis">❌ KRITIS</span>
+                  {% endif %}
+                  <div class="text-muted" style="font-size:.72rem;">
+                    {{ "%.1f" | format(item.status.km_efektif) }}/{{ item.status.batas_km }} km
+                  </div>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+
+              {# Tombol + KM #}
+              <td class="text-end pe-3">
+                <button class="btn btn-outline-success btn-sm btn-km"
+                        data-idx="{{ item.idx }}"
+                        data-nama="{{ item.entri.kendaraan.nama }}"
+                        data-bs-toggle="modal" data-bs-target="#modalTambahKm">
+                  + KM
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {# Footer ringkasan total #}
+        <div class="px-3 py-2 border-top bg-light rounded-bottom">
+          <div class="row small text-muted">
+            <div class="col">
+              Total KM:
+              <strong>{{ "%.1f" | format(ns.total_km) }} km</strong>
+            </div>
+            <div class="col text-end">
+              Emisi efektif:
+              <strong>{{ "%.4f" | format(emisi_mingguan) }} kg CO₂</strong>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    {# ── Hasil Compare (muncul hanya jika ada) ── #}
+    {% if compare_hasil %}
+    <div class="card border-0" style="box-shadow: 0 1px 6px rgba(0,0,0,.1);">
+      <div class="card-header py-3">
+        <span class="fw-semibold">
+          📊 Perbandingan vs
+          {% if compare_periode == "minggu" %}Minggu{% elif compare_periode == "bulan" %}Bulan{% else %}Tahun{% endif %}
+          Lalu
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row text-center g-2 mb-3">
+
+          <div class="col-4">
+            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">Saat Ini</div>
+            <div class="fs-5 fw-bold text-success">
+              {{ "%.4f" | format(compare_hasil.emisi_skrg) }}
+            </div>
+            <div class="small text-muted">kg CO₂</div>
+          </div>
+
+          <div class="col-4">
+            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">
+              {{ compare_periode | capitalize }} Lalu
+            </div>
+            <div class="fs-5 fw-bold">{{ "%.4f" | format(compare_hasil.emisi_lama) }}</div>
+            <div class="small text-muted">kg CO₂</div>
+          </div>
+
+          <div class="col-4">
+            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">Perubahan</div>
+            <div class="fs-5 fw-bold
+              {% if compare_hasil.tren == 'naik' %}text-danger
+              {% elif compare_hasil.tren == 'turun' %}text-success
+              {% else %}text-muted{% endif %}">
+              {% if compare_hasil.tren == "naik" %}⬆️
+              {% elif compare_hasil.tren == "turun" %}⬇️
+              {% else %}➡️{% endif %}
+              {{ "%+.1f" | format(compare_hasil.persen) }}%
+            </div>
+            <div class="small text-muted">{{ compare_hasil.tren }}</div>
+          </div>
+
+        </div>
+
+        <div class="rounded p-2 small text-center fw-semibold
+          {% if compare_hasil.tren == 'turun' %}text-success bg-tren-turun
+          {% elif compare_hasil.tren == 'naik' %}text-danger bg-tren-naik
+          {% else %}text-muted bg-tren-sama{% endif %}">
+          Selisih: {{ "%+.4f" | format(compare_hasil.selisih) }} kg CO₂
+          &nbsp;—&nbsp;
+          {% if compare_hasil.tren == "turun" %}Emisi berkurang. Terus pertahankan! 🌱
+          {% elif compare_hasil.tren == "naik" %}Emisi meningkat. Pertimbangkan mengurangi penggunaan kendaraan.
+          {% else %}Emisi stabil dibanding periode sebelumnya.{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Riwayat Snapshot ── #}
+    {% if tracker.riwayat %}
+    <div class="card">
+      <div class="card-header py-3">
+        <a class="fw-semibold text-dark text-decoration-none d-flex justify-content-between"
+           data-bs-toggle="collapse" href="#collapseRiwayat" role="button">
+          <span>🕘 Riwayat Snapshot</span>
+          <span class="badge rounded-pill text-bg-secondary">
+            {{ tracker.riwayat | length }}
+          </span>
+        </a>
+      </div>
+      <div class="collapse" id="collapseRiwayat">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 table-hover">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Tanggal</th>
+                <th class="text-center">Minggu ke-</th>
+                <th class="text-end">Emisi (kg CO₂)</th>
+                <th class="text-end pe-3">Proyeksi/tahun (kg CO₂)</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for snap in tracker.riwayat | reverse %}
+            <tr>
+              <td class="ps-3">{{ snap.tanggal }}</td>
+              <td class="text-center text-muted small">{{ snap.minggu }}</td>
+              <td class="text-end">{{ "%.4f" | format(snap.emisi_kg) }}</td>
+              <td class="text-end pe-3">{{ "%.2f" | format(snap.proyeksi_kg) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {# ════ END KIRI ════ #}
+
+  {# ════ KANAN: Aksi & Tools ════ #}
+  <div class="col-lg-4 d-flex flex-column gap-3">
+
+    {# Shortcut Tambah Kendaraan #}
+    <div class="card text-center p-4">
+      <div style="font-size:2rem;">🚗</div>
+      <p class="small text-muted mb-3 mt-1">
+        Daftarkan kendaraan baru untuk mulai pelacakan emisi.
+      </p>
+      <button class="btn btn-success w-100"
+              data-bs-toggle="modal" data-bs-target="#modalTambahKendaraan">
+        + Tambah Kendaraan
+      </button>
+    </div>
+
+    {# Bandingkan Periode #}
+    <div class="card">
+      <div class="card-header py-3">
+        <span class="fw-semibold">📊 Bandingkan Periode</span>
+      </div>
+      <div class="card-body">
+        <form action="/compare" method="POST">
+          <div class="mb-3 d-flex flex-column gap-1">
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="minggu" id="pMinggu" checked>
+              <label class="form-check-label" for="pMinggu">Minggu lalu</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="bulan" id="pBulan">
+              <label class="form-check-label" for="pBulan">Bulan lalu</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="tahun" id="pTahun">
+              <label class="form-check-label" for="pTahun">Tahun lalu</label>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-success w-100">
+            Bandingkan
+          </button>
+        </form>
+        <div class="mt-2 small text-muted">
+          💡 Snapshot tersimpan otomatis saat Reset dilakukan.
+        </div>
+      </div>
+    </div>
+
+    {# Reset Data #}
+    <div class="card" style="border: 1px solid #f5c6cb;">
+      <div class="card-header py-3" style="background:#fff5f5; border-bottom:1px solid #f5c6cb;">
+        <span class="fw-semibold text-danger">🔄 Reset Data Minggu</span>
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">
+          Hapus seluruh data KM minggu ini. Data akan
+          <strong>otomatis di-snapshot</strong> ke riwayat sebelum dihapus.
+        </p>
+        <form action="/reset" method="POST"
+              onsubmit="return confirm('Reset seluruh data KM minggu ini?\n\nSnapshot akan otomatis disimpan ke riwayat.')">
+          <button type="submit" class="btn btn-outline-danger w-100"
+                  {% if not ns.ada_km %}disabled title="Tidak ada data KM untuk direset"{% endif %}>
+            Reset Data Sekarang
+          </button>
+        </form>
+        {% if not ns.ada_km %}
+        <div class="small text-muted mt-2 text-center">Belum ada data KM yang diinput.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+  {# ════ END KANAN ════ #}
+
+</div>
+
+
+{# ══════════════════════════════════════════════════════════
+   MODAL: Tambah Kendaraan
+══════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="modalTambahKendaraan" tabindex="-1"
+     aria-labelledby="labelTambahKendaraan" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="labelTambahKendaraan">🚗 Tambah Kendaraan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form action="/tambah_kendaraan" method="POST">
+        <div class="modal-body">
+
+          {# Pilih jenis #}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Jenis Kendaraan</label>
+            <select class="form-select" name="tipe" id="selectTipe"
+                    onchange="updateFormFields()" required>
+              <option value="">— Pilih jenis kendaraan —</option>
+              <option value="motor">🏍️ Motor</option>
+              <option value="mobil_bensin">🚗 Mobil Bensin</option>
+              <option value="mobil_diesel">🚙 Mobil Diesel</option>
+              <option value="truk">🚛 Truk</option>
+              <option value="bus">🚌 Bus</option>
+            </select>
+          </div>
+
+          {# Field khusus Motor #}
+          <div id="fieldMotor" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">CC Mesin</label>
+              <input type="number" class="form-control" name="cc"
+                     placeholder="cth: 110, 150, 250, 400" min="1">
+              <div class="form-text">
+                &lt;150cc = Motor Kecil · 150–250cc = Motor Sedang · &gt;250cc = Motor Besar
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="modif" value="y" id="checkModif">
+                <label class="form-check-label" for="checkModif">
+                  Ada modifikasi mesin
+                  <span class="text-muted small">(faktor emisi +20%)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {# Field khusus Mobil Bensin & Diesel #}
+          <div id="fieldMobil" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Rata-rata jumlah penumpang</label>
+              <input type="number" class="form-control" name="pnp"
+                     value="1" min="1" max="20">
+            </div>
+          </div>
+
+          {# Field khusus Truk #}
+          <div id="fieldTruk" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Kapasitas muatan (ton)</label>
+              <input type="number" class="form-control" name="kapasitas_truk"
+                     value="5" min="0.1" step="0.1">
+            </div>
+          </div>
+
+          {# Field khusus Bus #}
+          <div id="fieldBus" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Kapasitas penumpang (kursi)</label>
+              <input type="number" class="form-control" name="kapasitas_bus"
+                     value="40" min="1">
+            </div>
+          </div>
+
+          {# Field corporate: unit & driver — hanya untuk akun perusahaan #}
+          {% if user.account_type != "Pribadi" %}
+          <div id="fieldCorporate" class="d-none">
+            <div class="border-top pt-3 mt-2 mb-1">
+              <span class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.05em;">
+                Data Armada
+              </span>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Jumlah Unit</label>
+                <input type="number" class="form-control" name="jml_unit"
+                       value="1" min="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Jumlah Driver</label>
+                <input type="number" class="form-control" name="jml_driver"
+                       value="1" min="1">
+              </div>
+            </div>
+            <div class="form-text mt-1">
+              KM akan dibagi rata antar driver untuk normalisasi emisi.
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary"
+                  data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success">Tambah Kendaraan</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+{# ══════════════════════════════════════════════════════════
+   MODAL: Tambah KM
+══════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="modalTambahKm" tabindex="-1"
+     aria-labelledby="labelTambahKm" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="labelTambahKm">+ Tambah Jarak (KM)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form action="/tambah_km" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <div class="small text-muted">Kendaraan</div>
+            <div class="fw-semibold" id="namaKendaraanKm">—</div>
+          </div>
+          <input type="hidden" name="idx" id="inputIdxKm">
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Jarak hari ini (km)</label>
+            <input type="number" class="form-control" name="km"
+                   id="inputKmHariIni"
+                   placeholder="cth: 12.5" min="0.1" step="0.1" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm"
+                  data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success btn-sm px-4">
+            Simpan
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{# ─── Scripts ─── #}
+{% block scripts %}
+<script>
+// Tampilkan tanggal hari ini
+document.getElementById('tglHariIni').textContent =
+  new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+// Show/hide field form tambah kendaraan sesuai tipe yang dipilih
+function updateFormFields() {
+  const tipe = document.getElementById('selectTipe').value;
+
+  // Sembunyikan semua field khusus dulu
+  ['fieldMotor', 'fieldMobil', 'fieldTruk', 'fieldBus'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('d-none');
+  });
+
+  // Tampilkan field yang relevan
+  const map = {
+    motor:        'fieldMotor',
+    mobil_bensin: 'fieldMobil',
+    mobil_diesel: 'fieldMobil',
+    truk:         'fieldTruk',
+    bus:          'fieldBus',
+  };
+  if (map[tipe]) {
+    document.getElementById(map[tipe]).classList.remove('d-none');
+  }
+
+  // Field corporate (unit & driver) — muncul setelah tipe dipilih
+  const corp = document.getElementById('fieldCorporate');
+  if (corp) {
+    tipe ? corp.classList.remove('d-none') : corp.classList.add('d-none');
+  }
+}
+
+// Isi modal Tambah KM dengan data kendaraan yang dipilih
+document.querySelectorAll('.btn-km').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const idx  = this.dataset.idx;
+    const nama = this.dataset.nama;
+    document.getElementById('inputIdxKm').value = idx;
+    document.getElementById('namaKendaraanKm').textContent = nama;
+  });
+});
+
+document.getElementById('modalTambahKm').addEventListener('shown.bs.modal', function () {
+  document.getElementById('inputKmHariIni').focus();
+});
+</script>
+{% endblock %}

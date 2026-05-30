@@ -1,11 +1,28 @@
-# Python cache
+# ── Python ──────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Virtual environment
+# ── Virtual Environment ──────────────────────────────
 venv/
-.env/
+.venv/
+env/
+ENV/
 
-# Flask stuff
+# ── Data pengguna (jangan di-commit ke repo) ─────────
+data/
+carbondrive_data.json
+
+# ── Flask / Environment ──────────────────────────────
+.env
 instance/
-.pytest_cache/
+*.log
+
+# ── IDE ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── OS ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
