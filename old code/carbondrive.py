@@ -177,7 +177,6 @@ class EntriKendaraan:
         self._log_harian.append({"tanggal": tanggal, "km": km})
 
     def km_efektif(self, tipe_akun: str) -> float:
-
         if tipe_akun == "Pribadi":
             return self._total_km
         return round(self._total_km / self._jumlah_driver, 2) \
@@ -262,11 +261,9 @@ class EmissionTracker:
         return False
 
     def total_emisi_mingguan(self) -> float:
-
         return round(sum(e.emisi_total() for e in self._entri), 4)
 
     def emisi_ternormalisasi(self) -> float:
-
         return round(
             sum(e.emisi_efektif(self._pengguna.account_type)
                 for e in self._entri), 4
@@ -299,17 +296,31 @@ class EmissionTracker:
             })
         return hasil
 
+    # -----------------------------------------------------------------
+    # FIX LOGIKA: MENYIMPAN SNAPSHOT BERDASARKAN TOMBOL SAVE (MENU 4)
+    # -----------------------------------------------------------------
     def simpan_snapshot(self) -> None:
         now = datetime.now()
-        self._riwayat.append({
-            "tanggal":     now.strftime("%Y-%m-%d"),
+        record = {
+            "tanggal":     now.strftime("%Y-%m-%d %H:%M:%S"),
             "minggu":      now.isocalendar()[1],
             "bulan":       now.month,
             "tahun":       now.year,
             "emisi_kg":    self.emisi_ternormalisasi(),
             "proyeksi_kg": self.proyeksi_tahunan(),
+            "status":      "Aktif (Dapat ditambah sebelum Reset)",
             "entri":       [e.ke_dict() for e in self._entri],
-        })
+        }
+
+        # Jika sebelumnya sudah pernah save di siklus yang sama, kita update recordnya agar tidak duplikat
+        if self._riwayat and self._riwayat[-1]["status"] == "Aktif (Dapat ditambah sebelum Reset)":
+            self._riwayat[-1] = record
+            print("  [Sistem] 🔄 Berhasil memperbarui arsip riwayat minggu ini!")
+        else:
+            self._riwayat.append(record)
+            print("  [Sistem] 💾 Data berhasil dicatat ke dalam riwayat database!")
+        
+        self.simpan_ke_file()
 
     def bandingkan_periode(self, periode: str) -> dict | None:
         if not self._riwayat:
@@ -319,17 +330,19 @@ class EmissionTracker:
         if periode == "minggu":
             mw = cal[1] - 1 if cal[1] > 1 else 52
             mt = cal[0] if cal[1] > 1 else cal[0] - 1
-            cocok = [h for h in self._riwayat if h["minggu"]
-                     == mw and h["tahun"] == mt]
+            cocok = [h for h in self._riwayat if h["minggu"] == mw and h["tahun"] == mt]
         elif periode == "bulan":
             bm = now.month - 1 if now.month > 1 else 12
             bt = now.year if now.month > 1 else now.year - 1
-            cocok = [h for h in self._riwayat if h["bulan"]
-                     == bm and h["tahun"] == bt]
+            cocok = [h for h in self._riwayat if h["bulan"] == bm and h["tahun"] == bt]
         elif periode == "tahun":
             cocok = [h for h in self._riwayat if h["tahun"] == now.year - 1]
         else:
             return None
+
+        # Jika tidak ada data spesifik minggu/bulan lalu, ambil data arsip paling terakhir yang tersedia
+        if not cocok:
+            cocok = [h for h in self._riwayat if h["status"] == "Final / Locked"]
 
         if not cocok:
             return None
@@ -337,10 +350,8 @@ class EmissionTracker:
         emisi_lama = cocok[-1]["emisi_kg"]
         emisi_skrg = self.emisi_ternormalisasi()
         selisih = round(emisi_skrg - emisi_lama, 4)
-        persen = round(selisih / emisi_lama * 100,
-                       1) if emisi_lama > 0 else 0.0
-        tren = "naik ⬆️" if selisih > 0 else (
-            "turun ⬇️" if selisih < 0 else "sama ➡️")
+        persen = round(selisih / emisi_lama * 100, 1) if emisi_lama > 0 else 0.0
+        tren = "naik ⬆️" if selisih > 0 else ("turun ⬇️" if selisih < 0 else "sama ➡️")
         return {
             "periode":    periode,
             "emisi_skrg": emisi_skrg,
@@ -350,12 +361,16 @@ class EmissionTracker:
             "tren":       tren,
         }
 
+    # -----------------------------------------------------------------
+    # FIX LOGIKA: RESET HANYA UNTUK MEMBERSIHKAN LEMBAR KERJA BERJALAN
+    # -----------------------------------------------------------------
     def reset_data(self) -> None:
-
-        if any(e.total_km > 0 for e in self._entri):
-            self.simpan_snapshot()
+        if self._riwayat and self._riwayat[-1]["status"] == "Aktif (Dapat ditambah sebelum Reset)":
+            self._riwayat[-1]["status"] = "Final / Locked"
+            
         for e in self._entri:
             e.reset()
+        self.simpan_ke_file()
 
     def simpan_ke_file(self) -> None:
         data = {
@@ -432,7 +447,7 @@ class User(ABC):
 
     def _bandingkan_periode(self) -> None:
         header("BANDINGKAN DENGAN PERIODE LALU")
-        print("  1. Minggu lalu")
+        print("  1. Minggu lalu / Siklus Terkunci Sebelumnya")
         print("  2. Bulan lalu")
         print("  3. Tahun lalu")
         try:
@@ -447,8 +462,8 @@ class User(ABC):
 
         hasil = self._tracker.bandingkan_periode(periode)
         if not hasil:
-            print(f"\n  [Info] Tidak ada data {periode} lalu.")
-            print("         (Snapshot tersimpan otomatis saat Reset dilakukan.)")
+            print(f"\n  [Info] Tidak ada data arsip {periode} lalu di database.")
+            print("         Silakan lakukan Simpan Siklus Mingguan (Menu 4) terlebih dahulu.")
             tekan_enter()
             return
 
@@ -461,23 +476,23 @@ class User(ABC):
         print(f"  {lbl_now:<32}: {hasil['emisi_skrg']:.4f} kg CO₂")
         print(f"  {lbl_lama:<32}: {hasil['emisi_lama']:.4f} kg CO₂")
         print(f"  {'Selisih':<32}: {hasil['selisih']:+.4f} kg CO₂")
-        print(
-            f"  {'Perubahan':<32}: {hasil['persen']:+.1f}%  →  {hasil['tren']}")
+        print(f"  {'Perubahan':<32}: {hasil['persen']:+.1f}%  →  {hasil['tren']}")
         tekan_enter()
 
     def _reset_data(self) -> None:
         if not any(e.total_km > 0 for e in self._tracker.entri):
-            print("\n  [Info] Tidak ada data km yang perlu direset.")
+            print("\n  [Info] Tidak ada data km berjalan yang perlu direset.")
             tekan_enter()
             return
         konfirmasi = input(
-            "\n  [!] Reset akan menyimpan snapshot periode ini,\n"
-            "      lalu menghapus seluruh data km.\n"
+            "\n  [!] Reset akan MENGOSONGKAN seluruh log lembar kerja berjalan\n"
+            "      untuk membuka buku catatan minggu baru.\n"
+            "      Pastikan Anda sudah memilih Opsi Simpan (Menu 4) sebelum melakukan reset.\n"
             "      Lanjutkan? (y/n): "
         ).strip().lower()
         if konfirmasi == "y":
             self._tracker.reset_data()
-            print("  ✅ Data km berhasil direset. Snapshot tersimpan.")
+            print("  ✅ Log berjalan dikosongkan! Anda siap memulai siklus minggu baru.")
         else:
             print("  Reset dibatalkan.")
         tekan_enter()
@@ -494,10 +509,10 @@ class PrivateUser(User):
         print("  1. Setup Kendaraan")
         print("  2. Input Jarak Tempuh Harian (km)")
         print("  3. Lihat Ringkasan Mingguan")
-        print("  4. Proyeksi Emisi Tahunan")
+        print("  4. SIMPAN SIKLUS MINGGUAN & PROYEKSI TAHUNAN")
         print("  5. Bandingkan dengan Periode Lalu")
-        print("  6. Reset Data Minggu Ini")
-        print("  0. Keluar & Simpan")
+        print("  6. Reset Data / Buka Lembar Minggu Baru")
+        print("  0. Keluar Aplikasi")
         garis()
 
     def _setup_kendaraan(self) -> None:
@@ -509,7 +524,7 @@ class PrivateUser(User):
         print("  4. Truk")
         print("  5. Bus")
         try:
-            pilihan = int(input("  Pilih (1-5): "))
+            pilihan = int(input("  Pilihan (1-5): "))
         except ValueError:
             print("  [Error] Masukkan angka 1-5.")
             tekan_enter()
@@ -518,9 +533,18 @@ class PrivateUser(User):
         kendaraan: Kendaraan | None = None
         try:
             if pilihan == 1:
-                cc = int(input("  CC mesin (contoh: 110, 150, 250, 400): "))
-                modif = input(
-                    "  Ada modifikasi mesin? (y/n): ").strip().lower() == "y"
+                # --- REFERENSI CC MOTOR NYATA DI PASARAN INDONESIA ---
+                print("\n  [INFO] Referensi Kapasitas CC Motor Populer:")
+                print("  - 110 cc : Beat, Scoopy, Mio, Genio")
+                print("  - 125 cc : Vario 125, Lexi, Jupiter, Supra X")
+                print("  - 150/160 cc : NMAX, PCX, Aerox, Vario 160, Satria FU")
+                print("  - 250 cc : Ninja 250, R25, CBR250RR, XMAX")
+                print("  - > 500 cc : Moge (Harley, CB500X, ER6n)\n")
+                
+                cc = int(input("  Masukkan Kapasitas CC Mesin: "))
+                if cc <= 0:
+                    raise ValueError("CC harus bernilai positif.")
+                modif = input("  Ada modifikasi mesin/knalpot? (y/n): ").strip().lower() == "y"
                 kendaraan = Motor(cc, modif)
             elif pilihan == 2:
                 pnp = int(input("  Rata-rata jumlah penumpang: "))
@@ -538,8 +562,8 @@ class PrivateUser(User):
                 print("  [Error] Pilihan tidak valid.")
                 tekan_enter()
                 return
-        except ValueError:
-            print("  [Error] Nilai tidak valid.")
+        except ValueError as err:
+            print(f"  [Error] Input dibatalkan: {err}")
             tekan_enter()
             return
 
@@ -553,8 +577,7 @@ class PrivateUser(User):
         tekan_enter()
 
     def _input_jarak(self) -> None:
-        idx = self._pilih_kendaraan_menu(
-            "Pilih kendaraan untuk input jarak hari ini")
+        idx = self._pilih_kendaraan_menu("Pilih kendaraan untuk input jarak hari ini")
         if idx is None:
             tekan_enter()
             return
@@ -583,36 +606,34 @@ class PrivateUser(User):
         garis("-", 56)
         total_km = 0.0
         for e in self._tracker.entri:
-            print(
-                f"  {e.kendaraan.nama:<34} {e.total_km:>7.1f}  {e.emisi_total():>15.4f}")
+            print(f"  {e.kendaraan.nama:<34} {e.total_km:>7.1f}  {e.emisi_total():>15.4f}")
             total_km += e.total_km
         garis("-", 56)
-        print(
-            f"  {'TOTAL':<34} {total_km:>7.1f}  {self._tracker.total_emisi_mingguan():>15.4f}")
+        print(f"  {'TOTAL':<34} {total_km:>7.1f}  {self._tracker.total_emisi_mingguan():>15.4f}")
 
-        print(
-            f"\n  Emisi minggu ini  : {self._tracker.emisi_ternormalisasi():.4f} kg CO₂")
-        print(
-            f"  Proyeksi / tahun  : {self._tracker.proyeksi_tahunan():.2f} kg CO₂")
+        print(f"\n  Emisi minggu ini  : {self._tracker.emisi_ternormalisasi():.4f} kg CO₂")
+        print(f"  Proyeksi / tahun  : {self._tracker.proyeksi_tahunan():.2f} kg CO₂")
 
         print(f"\n  STATUS vs. Standar Nasional (km/minggu):")
         garis("-", 56)
         for h in self._tracker.bandingkan_nasional():
-            print(
-                f"  {h['nama']:<32} {h['km_efektif']:>5.1f}/{h['batas_km']:<5} km  {h['status']}")
+            print(f"  {h['nama']:<32} {h['km_efektif']:>5.1f}/{h['batas_km']:<5} km  {h['status']}")
         tekan_enter()
 
     def _proyeksi_tahunan(self) -> None:
         if not any(e.total_km > 0 for e in self._tracker.entri):
-            print("\n  [Info] Belum ada data jarak. Input jarak terlebih dahulu.")
+            print("\n  [Info] Belum ada data jarak berjalan. Input jarak terlebih dahulu.")
             tekan_enter()
             return
-        header("PROYEKSI EMISI TAHUNAN")
-        print("  Basis: emisi minggu ini × 52 minggu\n")
+        header("SIMPAN DATA & PROYEKSI TAHUNAN")
+        
+        # Eksekusi penyimpanan ke list riwayat (Ide barumu)
+        self._tracker.simpan_snapshot()
+        
+        print("\n  Basis Proyeksi: emisi minggu ini × 52 minggu\n")
         for e in self._tracker.entri:
             emi = round(e.emisi_efektif(self.account_type) * 52, 2)
-            batas = STANDAR_NASIONAL.get(
-                e.kendaraan.label_tipe(), {}).get("batas_emisi_tahun")
+            batas = STANDAR_NASIONAL.get(e.kendaraan.label_tipe(), {}).get("batas_emisi_tahun")
             print(f"  {e.kendaraan.nama}")
             print(f"    KM/minggu      : {e.total_km:.1f} km")
             print(f"    Proyeksi/tahun : {emi:.2f} kg CO₂")
@@ -620,21 +641,21 @@ class PrivateUser(User):
                 st = "✅ AMAN" if emi <= batas else "❌ MELEWATI BATAS"
                 print(f"    Batas nasional : {batas} kg CO₂/th  →  {st}")
             print()
-        print(
-            f"  TOTAL PROYEKSI: {self._tracker.proyeksi_tahunan():.2f} kg CO₂/tahun")
+        print(f"  TOTAL PROYEKSI AKTIF: {self._tracker.proyeksi_tahunan():.2f} kg CO₂/tahun")
+        print("  *Petunjuk: Log berjalan aman disimpan, silakan input data susulan jika ada.")
         tekan_enter()
 
     def jalankan(self) -> None:
         if self._tracker.muat_dari_file():
             n = len(self._tracker.entri)
-            print(f"\n  [Sistem] Data tersimpan dimuat. ({n} kendaraan, "
-                  f"{len(self._tracker.riwayat)} snapshot riwayat)")
+            print(f"\n  [Sistem] Data arsip dimuat. ({n} kendaraan, "
+                  f"{len(self._tracker.riwayat)} snapshot riwayat ditemukan)")
         while True:
             self.show_menu()
             try:
                 pilihan = int(input("  Pilihan: "))
             except ValueError:
-                print("  [Error] Masukkan angka.")
+                print("  [Error] Masukkan angka pilihan yang valid.")
                 continue
 
             if pilihan == 0:
@@ -668,10 +689,10 @@ class CorporateUser(User):
         print("  1. Registrasi Armada Kendaraan")
         print("  2. Input Agregasi Jarak Harian (Total KM Armada)")
         print("  3. Lihat Ringkasan Mingguan Armada")
-        print("  4. Proyeksi Emisi Rata-rata per Driver / Tahun")
+        print("  4. SIMPAN SIKLUS MINGGUAN & PROYEKSI TAHUNAN")
         print("  5. Bandingkan dengan Historis (Minggu/Bulan/Tahun)")
-        print("  6. Reset Data Minggu Ini")
-        print("  0. Keluar & Simpan")
+        print("  6. Reset Data / Buka Lembar Minggu Baru")
+        print("  0. Keluar Aplikasi")
         garis()
 
     def _registrasi_armada(self) -> None:
@@ -696,11 +717,10 @@ class CorporateUser(User):
             return
 
         kendaraan: Kendaraan | None = None
-        _cc_preset = {1: 100, 2: 200, 3: 350}
+        _cc_preset = {1: 110, 2: 200, 3: 350}
         try:
             if pilihan in _cc_preset:
-                modif = input(
-                    "  Ada modifikasi mesin? (y/n): ").strip().lower() == "y"
+                modif = input("  Ada modifikasi mesin? (y/n): ").strip().lower() == "y"
                 kendaraan = Motor(_cc_preset[pilihan], modif)
             elif pilihan == 4:
                 kendaraan = MobilBensin()
@@ -726,8 +746,7 @@ class CorporateUser(User):
             tekan_enter()
             return
 
-        self._tracker.tambah_entri(
-            EntriKendaraan(kendaraan, jml_unit, jml_drv))
+        self._tracker.tambah_entri(EntriKendaraan(kendaraan, jml_unit, jml_drv))
         print(f"\n  ✅ Armada ditambahkan: {kendaraan}")
         print(f"     Unit: {jml_unit}  ·  Driver: {jml_drv}")
         tekan_enter()
@@ -746,8 +765,7 @@ class CorporateUser(User):
             idx = int(input("\n  Pilih armada (nomor): ")) - 1
             if not (0 <= idx < len(self._tracker.entri)):
                 raise ValueError("Nomor tidak valid.")
-            total_km = float(
-                input("  Total KM seluruh armada jenis ini hari ini: "))
+            total_km = float(input("  Total KM seluruh armada jenis ini hari ini: "))
             if total_km < 0:
                 raise ValueError("Jarak tidak boleh negatif.")
         except ValueError as err:
@@ -759,8 +777,7 @@ class CorporateUser(User):
         e = self._tracker.entri[idx]
         print(f"\n  ✅ {total_km} km ditambahkan ke armada {e.kendaraan.nama}")
         print(f"     Akumulasi total  : {e.total_km:.1f} km")
-        print(
-            f"     Rata-rata/driver : {e.rata_km_per_driver():.1f} km/driver")
+        print(f"     Rata-rata/driver : {e.rata_km_per_driver():.1f} km/driver")
         tekan_enter()
 
     def _lihat_ringkasan(self) -> None:
@@ -772,8 +789,7 @@ class CorporateUser(User):
         print(f"  Perusahaan : {self.username}")
         print(f"  Tanggal    : {datetime.now().strftime('%Y-%m-%d')}\n")
 
-        print(
-            f"  {'Armada':<26} {'Unit':>4} {'Drv':>4} {'KM Total':>10} {'KM/Drv':>8} {'Emisi(kg)':>10}")
+        print(f"  {'Armada':<26} {'Unit':>4} {'Drv':>4} {'KM Total':>10} {'KM/Drv':>8} {'Emisi(kg)':>10}")
         garis("-", 64)
         total_km_global = 0.0
         for e in self._tracker.entri:
@@ -787,16 +803,13 @@ class CorporateUser(User):
               f"{total_km_global:>10.1f}{'':>9}"
               f"{self._tracker.total_emisi_mingguan():>10.4f}")
 
-        print(
-            f"\n  Emisi rata-rata/driver  : {self._tracker.emisi_ternormalisasi():.4f} kg CO₂")
-        print(
-            f"  Proyeksi/driver/tahun   : {self._tracker.proyeksi_tahunan():.2f} kg CO₂")
+        print(f"\n  Emisi rata-rata/driver  : {self._tracker.emisi_ternormalisasi():.4f} kg CO₂")
+        print(f"  Proyeksi/driver/tahun   : {self._tracker.proyeksi_tahunan():.2f} kg CO₂")
 
         print(f"\n  STATUS ARMADA vs. Standar Nasional (KM/driver/minggu):")
         garis("-", 64)
         for h in self._tracker.bandingkan_nasional():
-            print(
-                f"  {h['nama']:<32} {h['km_efektif']:>6.1f}/{h['batas_km']:<6} km  {h['status']}")
+            print(f"  {h['nama']:<32} {h['km_efektif']:>6.1f}/{h['batas_km']:<6} km  {h['status']}")
         tekan_enter()
 
     def _proyeksi_tahunan(self) -> None:
@@ -804,34 +817,32 @@ class CorporateUser(User):
             print("\n  [Info] Belum ada data KM armada.")
             tekan_enter()
             return
-        header("PROYEKSI EMISI RATA-RATA PER DRIVER / TAHUN")
-        print("  Basis: emisi rata-rata/driver minggu ini × 52 minggu\n")
+        header("SIMPAN DATA KORPORASI & PROYEKSI TAHUNAN")
+        
+        # Eksekusi penyimpanan ke list riwayat korporat
+        self._tracker.simpan_snapshot()
+        
+        print("\n  Basis Proyeksi: emisi rata-rata/driver minggu ini × 52 minggu\n")
         for e in self._tracker.entri:
             emi = round(e.emisi_efektif(self.account_type) * 52, 2)
-            batas = STANDAR_NASIONAL.get(
-                e.kendaraan.label_tipe(), {}).get("batas_emisi_tahun")
-            print(
-                f"  {e.kendaraan.nama}  ({e.jumlah_unit} unit, {e.jumlah_driver} driver)")
+            batas = STANDAR_NASIONAL.get(e.kendaraan.label_tipe(), {}).get("batas_emisi_tahun")
+            print(f"  {e.kendaraan.nama}  ({e.jumlah_unit} unit, {e.jumlah_driver} driver)")
             print(f"    KM total/minggu        : {e.total_km:.1f} km")
-            print(
-                f"    KM rata2/driver/minggu : {e.rata_km_per_driver():.1f} km")
-            print(
-                f"    Emisi/driver/minggu    : {e.emisi_efektif(self.account_type):.4f} kg CO₂")
+            print(f"    KM rata2/driver/minggu : {e.rata_km_per_driver():.1f} km")
+            print(f"    Emisi/driver/minggu    : {e.emisi_efektif(self.account_type):.4f} kg CO₂")
             print(f"    Proyeksi/driver/tahun  : {emi:.2f} kg CO₂")
             if batas:
                 st = "✅ AMAN" if emi <= batas else "❌ MELEWATI BATAS"
-                print(
-                    f"    Batas nasional         : {batas} kg CO₂/th  →  {st}")
+                print(f"    Batas nasional         : {batas} kg CO₂/th  →  {st}")
             print()
-        print(
-            f"  TOTAL PROYEKSI: {self._tracker.proyeksi_tahunan():.2f} kg CO₂/driver/tahun")
+        print(f"  TOTAL PROYEKSI ARMADA: {self._tracker.proyeksi_tahunan():.2f} kg CO₂/driver/tahun")
         tekan_enter()
 
     def jalankan(self) -> None:
         if self._tracker.muat_dari_file():
             n = len(self._tracker.entri)
             print(f"\n  [Sistem] Data armada dimuat. ({n} jenis armada, "
-                  f"{len(self._tracker.riwayat)} snapshot riwayat)")
+                  f"{len(self._tracker.riwayat)} snapshot riwayat ditemukan)")
         while True:
             self.show_menu()
             try:
@@ -881,8 +892,7 @@ def main_interface() -> None:
                 print(f"\n  [Sistem] Berhasil masuk sebagai Akun Pribadi. 🧍")
             elif pilihan == 2:
                 active_user = CorporateUser(username)
-                print(
-                    f"\n  [Sistem] Berhasil masuk sebagai Akun Mitra Perusahaan. 🏢")
+                print(f"\n  [Sistem] Berhasil masuk sebagai Akun Mitra Perusahaan. 🏢")
             else:
                 print("  [Error] Masukkan 1 atau 2.")
         except ValueError:

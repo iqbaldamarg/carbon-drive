@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 
-{# ─── Hitung total KM semua kendaraan ─── #}
+{# ── Hitung totals ── #}
 {% set ns = namespace(total_km=0, ada_km=false) %}
 {% for item in entri_data %}
   {% set ns.total_km = ns.total_km + item.entri.total_km %}
   {% if item.entri.total_km > 0 %}{% set ns.ada_km = true %}{% endif %}
 {% endfor %}
 
-{# ─── Header halaman ─── #}
+{# ── Header ── #}
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div>
     <h4 class="fw-bold mb-0">
@@ -16,7 +16,8 @@
       {{ user.username }}
     </h4>
     <small class="text-muted">
-      Akun {{ user.account_type }} &nbsp;·&nbsp; <span id="tglHariIni">—</span>
+      Akun {{ user.account_type }}
+      &nbsp;·&nbsp; <span id="tglHariIni">—</span>
     </small>
   </div>
   <button class="btn btn-success px-4"
@@ -25,32 +26,26 @@
   </button>
 </div>
 
-{# ─── Stat Cards ─── #}
+{# ── Stat Cards ── #}
 <div class="row g-3 mb-4">
 
   <div class="col-sm-4">
     <div class="card p-3 h-100 stat-card">
-      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
-        Emisi Minggu Ini
-      </div>
+      <div class="label-stat">Emisi Minggu Ini</div>
       <div class="fs-3 fw-bold text-success lh-1 mb-1">
-        {{ "%.4f" | format(emisi_mingguan) }}
+        {{ "%.4f"|format(emisi_mingguan) }}
       </div>
       <div class="text-muted small">kg CO₂
-        {% if user.account_type != "Pribadi" %}
-        <span class="ms-1 opacity-75">/ driver</span>
-        {% endif %}
+        {% if user.account_type != "Pribadi" %}<span class="ms-1 opacity-75">/ driver</span>{% endif %}
       </div>
     </div>
   </div>
 
   <div class="col-sm-4">
     <div class="card p-3 h-100 stat-card" style="border-left-color:#e07b39;">
-      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
-        Proyeksi Tahunan
-      </div>
+      <div class="label-stat">Proyeksi Tahunan</div>
       <div class="fs-3 fw-bold lh-1 mb-1" style="color:#e07b39;">
-        {{ "%.2f" | format(proyeksi) }}
+        {{ "%.2f"|format(proyeksi) }}
       </div>
       <div class="text-muted small">kg CO₂ / tahun</div>
     </div>
@@ -58,39 +53,32 @@
 
   <div class="col-sm-4">
     <div class="card p-3 h-100 stat-card" style="border-left-color:#5b5ea6;">
-      <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing:.05em">
-        Kendaraan Terdaftar
-      </div>
+      <div class="label-stat">Kendaraan Terdaftar</div>
       <div class="fs-3 fw-bold lh-1 mb-1" style="color:#5b5ea6;">
-        {{ entri_data | length }}
+        {{ entri_data|length }}
       </div>
-      <div class="text-muted small">
-        {% if entri_data | length == 1 %}unit{% else %}unit{% endif %}
-        · {{ "%.1f" | format(ns.total_km) }} km total
-      </div>
+      <div class="text-muted small">unit · {{ "%.1f"|format(ns.total_km) }} km total</div>
     </div>
   </div>
 
 </div>
 
-{# ─── Konten Utama (2 kolom) ─── #}
+{# ── Layout Utama ── #}
 <div class="row g-3">
 
-  {# ════ KIRI: Tabel Kendaraan ════ #}
+  {# ════════════════════ KIRI ════════════════════ #}
   <div class="col-lg-8 d-flex flex-column gap-3">
 
-    {# Tabel #}
+    {# Tabel Kendaraan #}
     <div class="card">
       <div class="card-header py-3 d-flex align-items-center justify-content-between">
         <span class="fw-semibold">Daftar Kendaraan</span>
         {% if entri_data %}
-        <span class="badge rounded-pill text-bg-secondary">{{ entri_data | length }}</span>
+        <span class="badge rounded-pill text-bg-secondary">{{ entri_data|length }}</span>
         {% endif %}
       </div>
-
       <div class="card-body p-0">
 
-        {# ── Empty state ── #}
         {% if not entri_data %}
         <div class="text-center py-5">
           <div style="font-size:2.8rem;">🚗</div>
@@ -101,7 +89,6 @@
           </button>
         </div>
 
-        {# ── Tabel berisi data ── #}
         {% else %}
         <div class="table-responsive">
           <table class="table table-hover mb-0 align-middle">
@@ -110,14 +97,13 @@
                 <th class="ps-3">Kendaraan</th>
                 <th class="text-end">KM / Minggu</th>
                 <th class="text-end d-none d-md-table-cell">Emisi (kg CO₂)</th>
-                <th class="text-center">Status</th>
+                <th class="text-center">Status KM</th>
                 <th class="pe-3"></th>
               </tr>
             </thead>
             <tbody>
             {% for item in entri_data %}
             <tr>
-              {# Nama & info #}
               <td class="ps-3">
                 <div class="fw-semibold small">{{ item.entri.kendaraan.nama }}</div>
                 <div class="text-muted" style="font-size:.75rem;">
@@ -127,42 +113,33 @@
                   {% endif %}
                 </div>
               </td>
-
-              {# KM #}
               <td class="text-end">
-                <div class="fw-semibold">{{ "%.1f" | format(item.entri.total_km) }}</div>
+                <div class="fw-semibold">{{ "%.1f"|format(item.entri.total_km) }}</div>
                 {% if user.account_type != "Pribadi" and item.status %}
                 <div class="text-muted" style="font-size:.73rem;">
-                  {{ "%.1f" | format(item.status.km_efektif) }}/driver
+                  {{ "%.1f"|format(item.status.km_efektif) }}/driver
                 </div>
                 {% endif %}
               </td>
-
-              {# Emisi — hidden on small screens #}
               <td class="text-end d-none d-md-table-cell">
-                <div class="fw-semibold">{{ "%.4f" | format(item.entri.emisi_total()) }}</div>
+                {{ "%.4f"|format(item.entri.emisi_total()) }}
               </td>
-
-              {# Status badge #}
               <td class="text-center">
                 {% if item.status %}
-                  {% set s = item.status.status %}
-                  {% if s == "AMAN" %}
+                  {% if item.status.status == "AMAN" %}
                   <span class="badge badge-aman">✅ AMAN</span>
-                  {% elif s == "PERHATIAN" %}
+                  {% elif item.status.status == "PERHATIAN" %}
                   <span class="badge badge-perhatian">⚠️ PERHATIAN</span>
                   {% else %}
                   <span class="badge badge-kritis">❌ KRITIS</span>
                   {% endif %}
                   <div class="text-muted" style="font-size:.72rem;">
-                    {{ "%.1f" | format(item.status.km_efektif) }}/{{ item.status.batas_km }} km
+                    {{ "%.1f"|format(item.status.km_efektif) }}/{{ item.status.batas_km }} km
                   </div>
                 {% else %}
                   <span class="text-muted small">—</span>
                 {% endif %}
               </td>
-
-              {# Tombol + KM #}
               <td class="text-end pe-3">
                 <button class="btn btn-outline-success btn-sm btn-km"
                         data-idx="{{ item.idx }}"
@@ -176,18 +153,10 @@
             </tbody>
           </table>
         </div>
-
-        {# Footer ringkasan total #}
         <div class="px-3 py-2 border-top bg-light rounded-bottom">
           <div class="row small text-muted">
-            <div class="col">
-              Total KM:
-              <strong>{{ "%.1f" | format(ns.total_km) }} km</strong>
-            </div>
-            <div class="col text-end">
-              Emisi efektif:
-              <strong>{{ "%.4f" | format(emisi_mingguan) }} kg CO₂</strong>
-            </div>
+            <div class="col">Total KM: <strong>{{ "%.1f"|format(ns.total_km) }} km</strong></div>
+            <div class="col text-end">Emisi efektif: <strong>{{ "%.4f"|format(emisi_mingguan) }} kg CO₂</strong></div>
           </div>
         </div>
         {% endif %}
@@ -195,74 +164,156 @@
       </div>
     </div>
 
-    {# ── Hasil Compare (muncul hanya jika ada) ── #}
-    {% if compare_hasil %}
-    <div class="card border-0" style="box-shadow: 0 1px 6px rgba(0,0,0,.1);">
+    {# Proyeksi Tahunan per Kendaraan (muncul jika ada data km) #}
+    {% if proyeksi_per_kendaraan %}
+    <div class="card">
       <div class="card-header py-3">
+        <a class="fw-semibold text-dark text-decoration-none d-flex justify-content-between"
+           data-bs-toggle="collapse" href="#collapseProyeksi" role="button">
+          <span>📈 Proyeksi Tahunan per Kendaraan</span>
+          <span class="badge rounded-pill text-bg-warning text-dark">
+            basis: emisi minggu ini × 52
+          </span>
+        </a>
+      </div>
+      <div class="collapse show" id="collapseProyeksi">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Kendaraan</th>
+                <th class="text-end">
+                  {% if user.account_type != "Pribadi" %}KM/driver{% else %}KM{% endif %}/minggu
+                </th>
+                <th class="text-end">Emisi/minggu</th>
+                <th class="text-end">Proyeksi/tahun</th>
+                <th class="text-center pe-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for p in proyeksi_per_kendaraan %}
+            <tr>
+              <td class="ps-3 small fw-semibold">{{ p.nama }}</td>
+              <td class="text-end small">
+                {{ "%.1f"|format(p.km_driver if p.km_driver is not none else p.km_minggu) }} km
+              </td>
+              <td class="text-end small">{{ "%.4f"|format(p.emisi_minggu) }} kg</td>
+              <td class="text-end small fw-semibold">{{ "%.2f"|format(p.emisi_tahun) }} kg</td>
+              <td class="text-center pe-3">
+                {% if p.status_proj == "AMAN" %}
+                <span class="badge badge-aman small">✅ AMAN</span>
+                {% elif p.status_proj == "MELEWATI" %}
+                <span class="badge badge-kritis small">❌ MELEWATI</span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+                {% if p.batas %}
+                <div class="text-muted" style="font-size:.7rem;">
+                  batas: {{ p.batas }} kg/th
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td class="ps-3 fw-semibold small">TOTAL</td>
+                <td colspan="2"></td>
+                <td class="text-end fw-bold small">{{ "%.2f"|format(proyeksi) }} kg CO₂</td>
+                <td class="pe-3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="px-3 py-2 bg-light border-top rounded-bottom">
+          <small class="text-muted">
+            💡 Proyeksi dihitung dari pola penggunaan minggu ini.
+            Simpan data dengan tombol <strong>💾 Simpan Siklus</strong> agar tersimpan ke riwayat.
+          </small>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Hasil Compare #}
+    {% if compare_hasil %}
+    <div class="card">
+      <div class="card-header py-3 d-flex align-items-center justify-content-between">
         <span class="fw-semibold">
-          📊 Perbandingan vs
-          {% if compare_periode == "minggu" %}Minggu{% elif compare_periode == "bulan" %}Bulan{% else %}Tahun{% endif %}
-          Lalu
+          📊 Perbandingan Emisi
+          — {{ compare_periode|capitalize }} Lalu vs Sekarang
         </span>
+        {% if compare_hasil.is_fallback %}
+        <span class="badge text-bg-warning text-dark" style="font-size:.72rem;">
+          fallback ke siklus terkunci
+        </span>
+        {% endif %}
       </div>
       <div class="card-body">
+
+        {% if compare_hasil.is_fallback %}
+        <div class="alert alert-warning py-2 small mb-3">
+          ⚠️ Tidak ditemukan data spesifik
+          <strong>{{ compare_periode }} lalu</strong>.
+          Ditampilkan perbandingan dengan siklus terkunci terakhir
+          (disimpan: <strong>{{ compare_hasil.sumber_tanggal }}</strong>).
+        </div>
+        {% else %}
+        <div class="text-muted small mb-3">
+          Data sumber: disimpan <strong>{{ compare_hasil.sumber_tanggal }}</strong>
+        </div>
+        {% endif %}
+
         <div class="row text-center g-2 mb-3">
-
           <div class="col-4">
-            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">Saat Ini</div>
+            <div class="label-stat">Saat Ini</div>
             <div class="fs-5 fw-bold text-success">
-              {{ "%.4f" | format(compare_hasil.emisi_skrg) }}
+              {{ "%.4f"|format(compare_hasil.emisi_skrg) }}
             </div>
             <div class="small text-muted">kg CO₂</div>
           </div>
-
           <div class="col-4">
-            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">
-              {{ compare_periode | capitalize }} Lalu
-            </div>
-            <div class="fs-5 fw-bold">{{ "%.4f" | format(compare_hasil.emisi_lama) }}</div>
+            <div class="label-stat">Periode Lalu</div>
+            <div class="fs-5 fw-bold">{{ "%.4f"|format(compare_hasil.emisi_lama) }}</div>
             <div class="small text-muted">kg CO₂</div>
           </div>
-
           <div class="col-4">
-            <div class="small text-muted fw-semibold text-uppercase mb-1" style="font-size:.72rem;">Perubahan</div>
+            <div class="label-stat">Perubahan</div>
             <div class="fs-5 fw-bold
               {% if compare_hasil.tren == 'naik' %}text-danger
               {% elif compare_hasil.tren == 'turun' %}text-success
               {% else %}text-muted{% endif %}">
-              {% if compare_hasil.tren == "naik" %}⬆️
-              {% elif compare_hasil.tren == "turun" %}⬇️
-              {% else %}➡️{% endif %}
-              {{ "%+.1f" | format(compare_hasil.persen) }}%
+              {% if compare_hasil.tren == "naik" %}⬆️{% elif compare_hasil.tren == "turun" %}⬇️{% else %}➡️{% endif %}
+              {{ "%+.1f"|format(compare_hasil.persen) }}%
             </div>
             <div class="small text-muted">{{ compare_hasil.tren }}</div>
           </div>
-
         </div>
 
         <div class="rounded p-2 small text-center fw-semibold
           {% if compare_hasil.tren == 'turun' %}text-success bg-tren-turun
           {% elif compare_hasil.tren == 'naik' %}text-danger bg-tren-naik
           {% else %}text-muted bg-tren-sama{% endif %}">
-          Selisih: {{ "%+.4f" | format(compare_hasil.selisih) }} kg CO₂
+          Selisih: {{ "%+.4f"|format(compare_hasil.selisih) }} kg CO₂
           &nbsp;—&nbsp;
-          {% if compare_hasil.tren == "turun" %}Emisi berkurang. Terus pertahankan! 🌱
-          {% elif compare_hasil.tren == "naik" %}Emisi meningkat. Pertimbangkan mengurangi penggunaan kendaraan.
+          {% if compare_hasil.tren == "turun" %}Emisi berkurang. Pertahankan! 🌱
+          {% elif compare_hasil.tren == "naik" %}Emisi meningkat. Pertimbangkan kurangi penggunaan kendaraan.
           {% else %}Emisi stabil dibanding periode sebelumnya.{% endif %}
         </div>
       </div>
     </div>
     {% endif %}
 
-    {# ── Riwayat Snapshot ── #}
+    {# Riwayat Snapshot #}
     {% if tracker.riwayat %}
     <div class="card">
       <div class="card-header py-3">
         <a class="fw-semibold text-dark text-decoration-none d-flex justify-content-between"
            data-bs-toggle="collapse" href="#collapseRiwayat" role="button">
-          <span>🕘 Riwayat Snapshot</span>
+          <span>🕘 Riwayat Siklus Tersimpan</span>
           <span class="badge rounded-pill text-bg-secondary">
-            {{ tracker.riwayat | length }}
+            {{ tracker.riwayat|length }}
           </span>
         </a>
       </div>
@@ -271,95 +322,72 @@
           <table class="table table-sm mb-0 table-hover">
             <thead class="table-light">
               <tr>
-                <th class="ps-3">Tanggal</th>
+                <th class="ps-3">Tanggal Simpan</th>
                 <th class="text-center">Minggu ke-</th>
                 <th class="text-end">Emisi (kg CO₂)</th>
-                <th class="text-end pe-3">Proyeksi/tahun (kg CO₂)</th>
+                <th class="text-end">Proyeksi/tahun</th>
+                <th class="text-center pe-3">Status</th>
               </tr>
             </thead>
             <tbody>
-            {% for snap in tracker.riwayat | reverse %}
+            {% for snap in tracker.riwayat|reverse %}
             <tr>
-              <td class="ps-3">{{ snap.tanggal }}</td>
+              <td class="ps-3 small">{{ snap.tanggal }}</td>
               <td class="text-center text-muted small">{{ snap.minggu }}</td>
-              <td class="text-end">{{ "%.4f" | format(snap.emisi_kg) }}</td>
-              <td class="text-end pe-3">{{ "%.2f" | format(snap.proyeksi_kg) }}</td>
+              <td class="text-end small">{{ "%.4f"|format(snap.emisi_kg) }}</td>
+              <td class="text-end small">{{ "%.2f"|format(snap.proyeksi_kg) }}</td>
+              <td class="text-center pe-3">
+                {% if snap.get("status") == "Aktif" %}
+                <span class="badge text-bg-primary" style="font-size:.7rem;">🔵 Aktif</span>
+                {% elif snap.get("status") == "Final / Locked" %}
+                <span class="badge text-bg-success" style="font-size:.7rem;">🔒 Terkunci</span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
             </tbody>
           </table>
+        </div>
+        <div class="px-3 py-2 bg-light border-top rounded-bottom">
+          <small class="text-muted">
+            🔵 <strong>Aktif</strong> = masih bisa diperbarui &nbsp;|&nbsp;
+            🔒 <strong>Terkunci</strong> = dikunci saat Reset, dipakai untuk perbandingan
+          </small>
         </div>
       </div>
     </div>
     {% endif %}
 
   </div>
-  {# ════ END KIRI ════ #}
+  {# ════════════════════ END KIRI ════════════════════ #}
 
-  {# ════ KANAN: Aksi & Tools ════ #}
+  {# ════════════════════ KANAN ════════════════════ #}
   <div class="col-lg-4 d-flex flex-column gap-3">
 
-    {# Shortcut Tambah Kendaraan #}
-    <div class="card text-center p-4">
-      <div style="font-size:2rem;">🚗</div>
-      <p class="small text-muted mb-3 mt-1">
-        Daftarkan kendaraan baru untuk mulai pelacakan emisi.
-      </p>
-      <button class="btn btn-success w-100"
-              data-bs-toggle="modal" data-bs-target="#modalTambahKendaraan">
-        + Tambah Kendaraan
-      </button>
-    </div>
-
-    {# Bandingkan Periode #}
-    <div class="card">
-      <div class="card-header py-3">
-        <span class="fw-semibold">📊 Bandingkan Periode</span>
+    {# ── 1. Simpan Siklus Mingguan ── #}
+    <div class="card" style="border: 2px solid #2d6a4f;">
+      <div class="card-header py-3"
+           style="background: #d8f3dc; border-bottom: 2px solid #2d6a4f;">
+        <span class="fw-semibold" style="color:#1b4332;">💾 Simpan Siklus Mingguan</span>
+        {% if ada_snapshot_aktif %}
+        <span class="badge text-bg-primary ms-2" style="font-size:.7rem;">Sudah Disimpan</span>
+        {% endif %}
       </div>
       <div class="card-body">
-        <form action="/compare" method="POST">
-          <div class="mb-3 d-flex flex-column gap-1">
-            <div class="form-check">
-              <input class="form-check-input" type="radio"
-                     name="periode" value="minggu" id="pMinggu" checked>
-              <label class="form-check-label" for="pMinggu">Minggu lalu</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio"
-                     name="periode" value="bulan" id="pBulan">
-              <label class="form-check-label" for="pBulan">Bulan lalu</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio"
-                     name="periode" value="tahun" id="pTahun">
-              <label class="form-check-label" for="pTahun">Tahun lalu</label>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-outline-success w-100">
-            Bandingkan
-          </button>
-        </form>
-        <div class="mt-2 small text-muted">
-          💡 Snapshot tersimpan otomatis saat Reset dilakukan.
-        </div>
-      </div>
-    </div>
-
-    {# Reset Data #}
-    <div class="card" style="border: 1px solid #f5c6cb;">
-      <div class="card-header py-3" style="background:#fff5f5; border-bottom:1px solid #f5c6cb;">
-        <span class="fw-semibold text-danger">🔄 Reset Data Minggu</span>
-      </div>
-      <div class="card-body">
-        <p class="small text-muted mb-3">
-          Hapus seluruh data KM minggu ini. Data akan
-          <strong>otomatis di-snapshot</strong> ke riwayat sebelum dihapus.
+        <p class="small text-muted mb-2">
+          Rekam data minggu berjalan ke riwayat.
+          Bisa dilakukan <strong>berkali-kali</strong> — data lama akan diganti dengan yang terbaru.
         </p>
-        <form action="/reset" method="POST"
-              onsubmit="return confirm('Reset seluruh data KM minggu ini?\n\nSnapshot akan otomatis disimpan ke riwayat.')">
-          <button type="submit" class="btn btn-outline-danger w-100"
-                  {% if not ns.ada_km %}disabled title="Tidak ada data KM untuk direset"{% endif %}>
-            Reset Data Sekarang
+        <ul class="small text-muted mb-3 ps-3">
+          <li>Simpan di akhir minggu, atau kapan pun ingin merekam progres.</li>
+          <li>Wajib dilakukan <strong>sebelum Reset</strong> agar data tidak hilang.</li>
+        </ul>
+        <form action="/simpan_siklus" method="POST">
+          <button type="submit" class="btn btn-success w-100 fw-semibold"
+                  {% if not ns.ada_km %}disabled title="Input jarak dulu sebelum menyimpan"{% endif %}>
+            💾 Simpan Siklus Sekarang
           </button>
         </form>
         {% if not ns.ada_km %}
@@ -368,29 +396,97 @@
       </div>
     </div>
 
+    {# ── 2. Bandingkan Periode ── #}
+    <div class="card">
+      <div class="card-header py-3">
+        <span class="fw-semibold">📊 Bandingkan dengan Periode Lalu</span>
+      </div>
+      <div class="card-body">
+        <form action="/compare" method="POST">
+          <div class="d-flex flex-column gap-1 mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="minggu" id="pMinggu" checked>
+              <label class="form-check-label small" for="pMinggu">
+                Minggu lalu / Siklus terkunci sebelumnya
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="bulan" id="pBulan">
+              <label class="form-check-label small" for="pBulan">Bulan lalu</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="periode" value="tahun" id="pTahun">
+              <label class="form-check-label small" for="pTahun">Tahun lalu</label>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-success w-100">
+            Bandingkan
+          </button>
+        </form>
+        <div class="mt-2 small text-muted">
+          💡 Membutuhkan minimal satu siklus yang sudah
+          <strong>Disimpan lalu Direset</strong> (status Terkunci 🔒).
+        </div>
+      </div>
+    </div>
+
+    {# ── 3. Reset / Buka Minggu Baru ── #}
+    <div class="card {% if ns.ada_km and not ada_snapshot_aktif %}card-reset-danger{% else %}card-reset-normal{% endif %}">
+      <div class="card-header py-3 {% if ns.ada_km and not ada_snapshot_aktif %}card-header-reset-danger{% else %}card-header-reset-normal{% endif %}">
+        <span class="fw-semibold text-danger">🔄 Reset / Buka Minggu Baru</span>
+      </div>
+      <div class="card-body">
+
+        {# Warning jika ada km tapi belum disimpan #}
+        {% if ns.ada_km and not ada_snapshot_aktif %}
+        <div class="alert alert-danger py-2 small mb-3">
+          <strong>⚠️ Belum disimpan!</strong> Data minggu ini belum ada di riwayat.
+          Klik <strong>💾 Simpan Siklus</strong> dulu agar data tidak hilang saat reset.
+        </div>
+        {% elif ada_snapshot_aktif %}
+        <div class="alert alert-success py-2 small mb-3">
+          ✅ Data sudah tersimpan di riwayat. Aman untuk direset.
+        </div>
+        {% endif %}
+
+        <p class="small text-muted mb-3">
+          Mengosongkan log km berjalan untuk memulai siklus minggu baru.
+          Record riwayat yang sudah ada akan dikunci (🔒 Terkunci).
+        </p>
+        <form action="/reset" method="POST"
+              onsubmit="return confirm('{% if ns.ada_km and not ada_snapshot_aktif %}PERHATIAN: Data belum disimpan!\n\n{% endif %}Reset seluruh data KM minggu ini?')">
+          <button type="submit" class="btn btn-outline-danger w-100"
+                  {% if not ns.ada_km %}disabled title="Tidak ada data KM untuk direset"{% endif %}>
+            Reset Data Sekarang
+          </button>
+        </form>
+        {% if not ns.ada_km %}
+        <div class="small text-muted mt-2 text-center">Tidak ada data km yang perlu direset.</div>
+        {% endif %}
+
+      </div>
+    </div>
+
   </div>
-  {# ════ END KANAN ════ #}
+  {# ════════════════════ END KANAN ════════════════════ #}
 
 </div>
 
 
-{# ══════════════════════════════════════════════════════════
-   MODAL: Tambah Kendaraan
-══════════════════════════════════════════════════════════ #}
-<div class="modal fade" id="modalTambahKendaraan" tabindex="-1"
-     aria-labelledby="labelTambahKendaraan" aria-hidden="true">
+{# ══════════════════ MODAL: Tambah Kendaraan ══════════════════ #}
+<div class="modal fade" id="modalTambahKendaraan" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-
       <div class="modal-header">
-        <h5 class="modal-title" id="labelTambahKendaraan">🚗 Tambah Kendaraan</h5>
+        <h5 class="modal-title">🚗 Tambah Kendaraan</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-
       <form action="/tambah_kendaraan" method="POST">
         <div class="modal-body">
 
-          {# Pilih jenis #}
           <div class="mb-3">
             <label class="form-label fw-semibold">Jenis Kendaraan</label>
             <select class="form-select" name="tipe" id="selectTipe"
@@ -404,29 +500,33 @@
             </select>
           </div>
 
-          {# Field khusus Motor #}
+          {# Motor #}
           <div id="fieldMotor" class="d-none">
-            <div class="mb-3">
+            <div class="mb-2">
               <label class="form-label">CC Mesin</label>
               <input type="number" class="form-control" name="cc"
-                     placeholder="cth: 110, 150, 250, 400" min="1">
-              <div class="form-text">
-                &lt;150cc = Motor Kecil · 150–250cc = Motor Sedang · &gt;250cc = Motor Besar
-              </div>
+                     placeholder="cth: 110, 125, 150, 250, 400" min="1">
+            </div>
+            <div class="alert alert-light py-2 small mb-2">
+              <strong>Referensi CC motor populer:</strong><br>
+              110–125cc: Beat, Scoopy, Mio, Vario 125, Supra X<br>
+              150–160cc: NMAX, PCX, Aerox, Vario 160, Satria FU<br>
+              250cc: Ninja 250, R25, CBR250RR, XMAX<br>
+              500cc+: Moge (Harley, CB500X, ER6n)
             </div>
             <div class="mb-3">
               <div class="form-check">
                 <input class="form-check-input" type="checkbox"
                        name="modif" value="y" id="checkModif">
-                <label class="form-check-label" for="checkModif">
-                  Ada modifikasi mesin
-                  <span class="text-muted small">(faktor emisi +20%)</span>
+                <label class="form-check-label small" for="checkModif">
+                  Ada modifikasi mesin/knalpot
+                  <span class="text-muted">(faktor emisi +20%)</span>
                 </label>
               </div>
             </div>
           </div>
 
-          {# Field khusus Mobil Bensin & Diesel #}
+          {# Mobil #}
           <div id="fieldMobil" class="d-none">
             <div class="mb-3">
               <label class="form-label">Rata-rata jumlah penumpang</label>
@@ -435,7 +535,7 @@
             </div>
           </div>
 
-          {# Field khusus Truk #}
+          {# Truk #}
           <div id="fieldTruk" class="d-none">
             <div class="mb-3">
               <label class="form-label">Kapasitas muatan (ton)</label>
@@ -444,7 +544,7 @@
             </div>
           </div>
 
-          {# Field khusus Bus #}
+          {# Bus #}
           <div id="fieldBus" class="d-none">
             <div class="mb-3">
               <label class="form-label">Kapasitas penumpang (kursi)</label>
@@ -453,29 +553,22 @@
             </div>
           </div>
 
-          {# Field corporate: unit & driver — hanya untuk akun perusahaan #}
+          {# Corporate: unit & driver #}
           {% if user.account_type != "Pribadi" %}
-          <div id="fieldCorporate" class="d-none">
-            <div class="border-top pt-3 mt-2 mb-1">
-              <span class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.05em;">
-                Data Armada
-              </span>
-            </div>
+          <div id="fieldCorporate" class="d-none border-top pt-3">
+            <div class="small text-muted fw-semibold text-uppercase mb-2"
+                 style="font-size:.72rem; letter-spacing:.05em;">Data Armada</div>
             <div class="row g-2">
               <div class="col-6">
-                <label class="form-label">Jumlah Unit</label>
-                <input type="number" class="form-control" name="jml_unit"
-                       value="1" min="1">
+                <label class="form-label small">Jumlah Unit</label>
+                <input type="number" class="form-control" name="jml_unit" value="1" min="1">
               </div>
               <div class="col-6">
-                <label class="form-label">Jumlah Driver</label>
-                <input type="number" class="form-control" name="jml_driver"
-                       value="1" min="1">
+                <label class="form-label small">Jumlah Driver</label>
+                <input type="number" class="form-control" name="jml_driver" value="1" min="1">
               </div>
             </div>
-            <div class="form-text mt-1">
-              KM akan dibagi rata antar driver untuk normalisasi emisi.
-            </div>
+            <div class="form-text">KM akan dibagi rata antar driver.</div>
           </div>
           {% endif %}
 
@@ -486,25 +579,19 @@
           <button type="submit" class="btn btn-success">Tambah Kendaraan</button>
         </div>
       </form>
-
     </div>
   </div>
 </div>
 
 
-{# ══════════════════════════════════════════════════════════
-   MODAL: Tambah KM
-══════════════════════════════════════════════════════════ #}
-<div class="modal fade" id="modalTambahKm" tabindex="-1"
-     aria-labelledby="labelTambahKm" aria-hidden="true">
+{# ══════════════════ MODAL: Tambah KM ══════════════════ #}
+<div class="modal fade" id="modalTambahKm" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-
       <div class="modal-header">
-        <h5 class="modal-title" id="labelTambahKm">+ Tambah Jarak (KM)</h5>
+        <h5 class="modal-title">+ Tambah Jarak (KM)</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-
       <form action="/tambah_km" method="POST">
         <div class="modal-body">
           <div class="mb-3">
@@ -522,12 +609,9 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary btn-sm"
                   data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-success btn-sm px-4">
-            Simpan
-          </button>
+          <button type="submit" class="btn btn-success btn-sm px-4">Simpan</button>
         </div>
       </form>
-
     </div>
   </div>
 </div>
@@ -535,51 +619,38 @@
 {% endblock %}
 
 
-{# ─── Scripts ─── #}
 {% block scripts %}
 <script>
-// Tampilkan tanggal hari ini
+// Tanggal hari ini
 document.getElementById('tglHariIni').textContent =
   new Date().toLocaleDateString('id-ID', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-// Show/hide field form tambah kendaraan sesuai tipe yang dipilih
+// Show/hide field form tambah kendaraan sesuai tipe dipilih
 function updateFormFields() {
   const tipe = document.getElementById('selectTipe').value;
-
-  // Sembunyikan semua field khusus dulu
   ['fieldMotor', 'fieldMobil', 'fieldTruk', 'fieldBus'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('d-none');
   });
-
-  // Tampilkan field yang relevan
   const map = {
-    motor:        'fieldMotor',
+    motor: 'fieldMotor',
     mobil_bensin: 'fieldMobil',
     mobil_diesel: 'fieldMobil',
-    truk:         'fieldTruk',
-    bus:          'fieldBus',
+    truk: 'fieldTruk',
+    bus: 'fieldBus',
   };
-  if (map[tipe]) {
-    document.getElementById(map[tipe]).classList.remove('d-none');
-  }
-
-  // Field corporate (unit & driver) — muncul setelah tipe dipilih
+  if (map[tipe]) document.getElementById(map[tipe]).classList.remove('d-none');
   const corp = document.getElementById('fieldCorporate');
-  if (corp) {
-    tipe ? corp.classList.remove('d-none') : corp.classList.add('d-none');
-  }
+  if (corp) tipe ? corp.classList.remove('d-none') : corp.classList.add('d-none');
 }
 
-// Isi modal Tambah KM dengan data kendaraan yang dipilih
+// Isi modal Tambah KM
 document.querySelectorAll('.btn-km').forEach(btn => {
   btn.addEventListener('click', function () {
-    const idx  = this.dataset.idx;
-    const nama = this.dataset.nama;
-    document.getElementById('inputIdxKm').value = idx;
-    document.getElementById('namaKendaraanKm').textContent = nama;
+    document.getElementById('inputIdxKm').value = this.dataset.idx;
+    document.getElementById('namaKendaraanKm').textContent = this.dataset.nama;
   });
 });
 

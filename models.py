@@ -291,17 +291,31 @@ class EmissionTracker:
             })
         return hasil
 
-    def simpan_snapshot(self) -> None:
+    def simpan_snapshot(self) -> str:
+        """
+        Simpan/update snapshot data berjalan ke riwayat.
+        Jika record terakhir masih status 'Aktif', record itu di-UPDATE (tidak duplikat).
+        Return 'update' jika update record lama, 'baru' jika buat record baru.
+        """
         now = datetime.now()
-        self._riwayat.append({
-            "tanggal":     now.strftime("%Y-%m-%d"),
+        record = {
+            "tanggal":     now.strftime("%Y-%m-%d %H:%M:%S"),
             "minggu":      now.isocalendar()[1],
             "bulan":       now.month,
             "tahun":       now.year,
             "emisi_kg":    self.emisi_ternormalisasi(),
             "proyeksi_kg": self.proyeksi_tahunan(),
+            "status":      "Aktif",
             "entri":       [e.ke_dict() for e in self._entri],
-        })
+        }
+        if self._riwayat and self._riwayat[-1].get("status") == "Aktif":
+            self._riwayat[-1] = record
+            self.simpan_ke_file()
+            return "update"
+        else:
+            self._riwayat.append(record)
+            self.simpan_ke_file()
+            return "baru"
 
     def bandingkan_periode(self, periode: str) -> dict | None:
         if not self._riwayat:
@@ -323,6 +337,14 @@ class EmissionTracker:
         else:
             return None
 
+        # Fallback: jika tidak ada data periode spesifik,
+        # gunakan record "Final / Locked" terbaru yang tersedia
+        is_fallback = False
+        if not cocok:
+            cocok = [h for h in self._riwayat
+                     if h.get("status") == "Final / Locked"]
+            is_fallback = True
+
         if not cocok:
             return None
 
@@ -332,19 +354,27 @@ class EmissionTracker:
         persen     = round(selisih / emisi_lama * 100, 1) if emisi_lama > 0 else 0.0
         tren       = "naik" if selisih > 0 else ("turun" if selisih < 0 else "sama")
         return {
-            "periode":    periode,
-            "emisi_skrg": emisi_skrg,
-            "emisi_lama": emisi_lama,
-            "selisih":    selisih,
-            "persen":     persen,
-            "tren":       tren,
+            "periode":        periode,
+            "emisi_skrg":     emisi_skrg,
+            "emisi_lama":     emisi_lama,
+            "selisih":        selisih,
+            "persen":         persen,
+            "tren":           tren,
+            "is_fallback":    is_fallback,
+            "sumber_tanggal": cocok[-1].get("tanggal", "—"),
         }
 
     def reset_data(self) -> None:
-        if any(e.total_km > 0 for e in self._entri):
-            self.simpan_snapshot()
+        """
+        Kunci record 'Aktif' terakhir menjadi 'Final / Locked',
+        lalu kosongkan km berjalan. TIDAK otomatis simpan snapshot baru.
+        Pengguna wajib Simpan Siklus (Menu 4) sebelum reset agar data tercatat.
+        """
+        if self._riwayat and self._riwayat[-1].get("status") == "Aktif":
+            self._riwayat[-1]["status"] = "Final / Locked"
         for e in self._entri:
             e.reset()
+        self.simpan_ke_file()
 
     def simpan_ke_file(self) -> None:
         data = {
