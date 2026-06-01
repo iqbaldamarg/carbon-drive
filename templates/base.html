@@ -49,19 +49,17 @@
     .label-stat       { font-size:.72rem; font-weight:600; text-transform:uppercase;
                         letter-spacing:.05em; color:#666; margin-bottom:.25rem; }
     .table th         { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; }
-
-    /* Reset card states */
-    .card-reset-danger        { border: 1px solid #f5c6cb !important; }
-    .card-reset-normal        { border: 1px solid #dee2e6; }
-    .card-header-reset-danger { background: #fff5f5; border-bottom: 1px solid #f5c6cb; }
-    .card-header-reset-normal { background: #fff;    border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
 
 {% if session.username %}
 <nav class="navbar navbar-dark px-3 mb-4">
-  <span class="navbar-brand">🌱 CarbonDrive</span>
+  <a class="navbar-brand p-0" href="/dashboard">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="CarbonDrive"
+         style="height: 60px; width: auto; object-fit: contain;">
+  </a>
   <div class="d-flex align-items-center gap-3">
     <span class="text-white opacity-75 small">{{ session.username }}</span>
     <a href="/logout" class="btn btn-outline-light btn-sm">Keluar & Simpan</a>
