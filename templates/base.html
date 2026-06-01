@@ -48,26 +48,33 @@
     .stat-card        { border-left: 4px solid var(--cd-green); }
     .label-stat       { font-size:.72rem; font-weight:600; text-transform:uppercase;
                         letter-spacing:.05em; color:#666; margin-bottom:.25rem; }
-    .table th         { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; }
-
-    /* Dashboard background image */
-    .dashboard-bg {
-      background-image: url('/static/images/bg_dashboard.png');
-      background-size: cover;
-      background-attachment: fixed;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
-    .dashboard-bg .container {
-      position: relative;
-      z-index: 1;
-    }
+    .table th         { font-size: 0.8rem; text-transform: uppercase;
+                        letter-spacing: 0.05em; color: #666; }
 
     /* Reset card states */
     .card-reset-danger        { border: 1px solid #f5c6cb !important; }
     .card-reset-normal        { border: 1px solid #dee2e6; }
     .card-header-reset-danger { background: #fff5f5; border-bottom: 1px solid #f5c6cb; }
     .card-header-reset-normal { background: #fff;    border-bottom: 1px solid #eee; }
+
+    /*
+     * Dashboard background — menggunakan ::before pseudo-element
+     * agar TIDAK mengganggu z-index modal Bootstrap.
+     *
+     * JANGAN gunakan background-image atau background-attachment: fixed
+     * langsung pada body/class, karena itu membuat compositing layer
+     * yang merusak stacking context modal.
+     */
+    .dashboard-bg::before {
+      content: '';
+      position: fixed;
+      inset: 0;                /* setara top:0; right:0; bottom:0; left:0 */
+      background-image: url('/static/images/bg_dashboard.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: -1;             /* di bawah semua konten termasuk modal */
+    }
   </style>
 </head>
 <body class="{% block body_class %}{% endblock %}">
